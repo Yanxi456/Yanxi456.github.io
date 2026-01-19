@@ -1,6 +1,7 @@
 import json
 import os
 from datetime import datetime, timezone
+import time
 from typing import Any, Dict, List, Optional
 
 import requests
@@ -62,29 +63,65 @@ def fetch_all_repos(session: requests.Session) -> List[Dict[str, Any]]:
     return non_fork_repos
 
 
-def fetch_repo_code_frequency(session: requests.Session, owner: str, name: str) -> Optional[List[List[int]]]:
+def fetch_repo_code_frequency(
+    session: requests.Session,
+    owner: str,
+    name: str,
+    retries: int = 5,
+    backoff_seconds: int = 8,
+) -> Optional[List[List[int]]]:
     """
     使用 /stats/code_frequency 接口获取某仓库每周的增删行统计。
     返回格式为 [[week_unix_timestamp, additions, deletions], ...]
     若处于计算中可能返回 202，此时返回 None 并跳过该仓库。
     """
     url = f"{GITHUB_API_BASE}/repos/{owner}/{name}/stats/code_frequency"
-    resp = session.get(url, timeout=60)
 
-    if resp.status_code == 202:
-        print(f"[warn] 仓库 {owner}/{name} 的统计数据正在生成（HTTP 202），本次跳过。")
-        return None
+    for attempt in range(1, retries + 1):
+        resp = session.get(url, timeout=60)
 
+        if resp.status_code == 202:
+            # GitHub 正在异步生成统计数据，等待后重试
+            if attempt == retries:
+                print(f"[warn] 仓库 {owner}/{name} 的统计数据仍在生成（HTTP 202），已达最大重试次数，跳过。")
+                return None
+            sleep_sec = backoff_seconds
+            print(f"[info] 仓库 {owner}/{name} 统计数据生成中（HTTP 202），{sleep_sec}s 后重试 {attempt}/{retries}...")
+            time.sleep(sleep_sec)
+            continue
+
+        if resp.status_code == 204:
+            # 无内容，多见于空仓库或尚无统计数据，返回空数组视为 0 行
+            print(f"[warn] 仓库 {owner}/{name} code_frequency 返回 204 No Content，记为 0 行。")
+            return []
+
+        if resp.status_code != 200:
+            print(f"[warn] 获取 {owner}/{name} code_frequency 失败: HTTP {resp.status_code}")
+            return None
+
+        data = resp.json()
+        if not isinstance(data, list):
+            print(f"[warn] 仓库 {owner}/{name} code_frequency 返回数据格式异常。")
+            return None
+
+        return data
+
+    return None
+
+
+def fetch_repo_languages(session: requests.Session, owner: str, name: str) -> Optional[Dict[str, int]]:
+    """
+    备用方案：获取语言字节数。这里将字节数粗略转换为“行数”近似值。
+    """
+    url = f"{GITHUB_API_BASE}/repos/{owner}/{name}/languages"
+    resp = session.get(url, timeout=30)
     if resp.status_code != 200:
-        print(f"[warn] 获取 {owner}/{name} code_frequency 失败: HTTP {resp.status_code}")
+        print(f"[warn] 获取 {owner}/{name} languages 失败: HTTP {resp.status_code}")
         return None
-
     data = resp.json()
-    if not isinstance(data, list):
-        print(f"[warn] 仓库 {owner}/{name} code_frequency 返回数据格式异常。")
+    if not isinstance(data, dict):
         return None
-
-    return data
+    return {k: int(v) for k, v in data.items()}
 
 
 def compute_total_lines(session: requests.Session, repos: List[Dict[str, Any]]) -> int:
@@ -103,16 +140,22 @@ def compute_total_lines(session: requests.Session, repos: List[Dict[str, Any]]) 
 
         print(f"[info] 统计仓库: {full_name}")
         freq = fetch_repo_code_frequency(session, owner, name)
-        if not freq:
-            continue
-
         repo_total = 0
-        for week in freq:
-            if not isinstance(week, list) or len(week) < 3:
-                continue
-            _, additions, deletions = week
-            # deletions 通常为负数，这里按官方文档，以 additions - deletions 计算净变化
-            repo_total += int(additions) - int(deletions)
+
+        if freq is not None:
+            for week in freq:
+                if not isinstance(week, list) or len(week) < 3:
+                    continue
+                _, additions, deletions = week
+                # deletions 通常为负数，这里按官方文档，以 additions - deletions 计算净变化
+                repo_total += int(additions) - int(deletions)
+        else:
+            # 备用：用 languages API 的字节数估算行数（假设 50 字节 ≈ 1 行）
+            langs = fetch_repo_languages(session, owner, name)
+            if langs:
+                byte_sum = sum(langs.values())
+                repo_total = byte_sum // 50  # 粗略估算
+                print(f"[info] 仓库 {full_name} 使用 languages 估算总代码行数: {repo_total}")
 
         print(f"[info] 仓库 {full_name} 估算总代码行数: {repo_total}")
         total_lines += max(repo_total, 0)
