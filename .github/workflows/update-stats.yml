@@ -1,8 +1,13 @@
 name: Update code statistics
 
+# 防止多个 workflow 同时运行导致推送冲突
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 on:
   schedule:
-    # 每天 UTC 时间 02:00 运行一次（可根据需要调整）
+    # 每天 UTC 时间 02:00 运行一次
     - cron: "0 2 * * *"
   workflow_dispatch:
   push:
@@ -19,6 +24,9 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          # 取回所有历史记录，确保 rebase 操作正常运行
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -43,16 +51,19 @@ jobs:
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
 
-          # 强制拉取远程最新代码并合并
-          git pull origin main --rebase
-
+          # 暂存修改后的 stats.json
           git add stats.json
-          # 检查是否有变化，有变化才提交并推送
+          
+          # 检查是否有文件更改
           if ! git diff --staged --quiet; then
             git commit -m "chore: update stats [skip ci]"
-            # 使用包含 Token 的完整 URL 进行推送，确保权限通过
+            
+            # 关键：在 push 之前再次拉取远程最新的代码并使用 rebase 模式
+            # 这可以解决 "rejected main -> main (fetch first)" 的错误
+            git pull origin main --rebase
+            
+            # 使用包含 Token 的 URL 推送
             git push https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git main
           else
             echo "No changes to commit"
           fi
-
