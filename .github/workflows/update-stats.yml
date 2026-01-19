@@ -45,6 +45,10 @@ jobs:
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # 使用 GH_TOKEN 更新远端地址，确保 push 鉴权
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/Yanxi456/Yanxi456.github.io"
+
           git add stats.json
 
           # 确保基于最新 main，避免 push 被拒绝
