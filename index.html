@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Yanxi456 | SYSU School of Cyberscience and Technology Cyberpunk Hub</title>
+  <meta name="description" content="中山大学网络科学与技术学院学生的赛博朋克风 GitHub 主页" />
+
+  <!-- Tailwind CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            neonCyan: '#0ff',
+            neonPink: '#ff00ff',
+            neonPurple: '#b388ff',
+            darkBg: '#050816',
+          },
+          boxShadow: {
+            'neon-cyan': '0 0 10px rgba(0,255,255,0.7), 0 0 30px rgba(0,255,255,0.5)',
+            'neon-pink': '0 0 10px rgba(255,0,255,0.7), 0 0 30px rgba(255,0,255,0.5)',
+          },
+          keyframes: {
+            scanlines: {
+              '0%': { transform: 'translateY(-100%)' },
+              '100%': { transform: 'translateY(100%)' },
+            },
+            flicker: {
+              '0%, 19%, 21%, 23%, 25%, 54%, 56%, 100%': { opacity: '1' },
+              '20%, 24%, 55%': { opacity: '0.4' },
+            },
+          },
+          animation: {
+            scanlines: 'scanlines 6s linear infinite',
+            flicker: 'flicker 3s infinite',
+          },
+        },
+      },
+    };
+  </script>
+  <style>
+    /* 轻微噪点背景 */
+    .noise-layer::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.12;
+      mix-blend-mode: soft-light;
+      background-image: url("https://grainy-gradients.vercel.app/noise.svg");
+    }
+  </style>
+
+  <!-- ECharts CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+</head>
+<body class="bg-darkBg text-slate-100 min-h-screen">
+  <div class="relative min-h-screen overflow-hidden bg-gradient-to-br from-slate-950 via-slate-900 to-purple-900">
+    <!-- 扫描线层 -->
+    <div class="pointer-events-none absolute inset-0 opacity-15 mix-blend-soft-light">
+      <div class="h-full w-full bg-[linear-gradient(to_bottom,rgba(255,255,255,0.12)_1px,transparent_1px)] bg-[length:100%_3px] animate-scanlines"></div>
+    </div>
+
+    <!-- 噪点层 -->
+    <div class="noise-layer absolute inset-0"></div>
+
+    <!-- 中山大学校徽（优先使用仓库内图片，避免外链失效） -->
+    <div class="pointer-events-none fixed top-4 left-4 z-40">
+      <div class="flex items-center gap-3">
+        <div class="relative">
+          <div class="absolute -inset-1 rounded-full bg-gradient-to-tr from-emerald-400/40 via-transparent to-cyan-400/40 blur-sm"></div>
+          <img
+            src="sysu_logos_nobg.png"
+            alt="中山大学校徽"
+            class="relative h-16 w-16 rounded-full border border-emerald-300/60 bg-white/10 p-1.5 shadow-neon-cyan backdrop-blur object-contain"
+            onerror="this.onerror=null; this.src='https://www.sysu.edu.cn/images/logo.png';"
+            loading="lazy"
+          />
+        </div>
+        <div class="text-xs text-emerald-200/80 leading-tight">
+          <div class="font-semibold">School of</div>
+          <div>Cyberscience</div>
+          <div>& Technology</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 顶部 HUD 风状态条 -->
+    <header class="relative z-20 border-b border-slate-800/70 bg-slate-900/50 backdrop-blur">
+      <div class="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
+        <div class="flex items-center gap-4">
+          <!-- GitHub 头像 -->
+          <div class="relative">
+            <div class="absolute -inset-1 rounded-full bg-gradient-to-tr from-neonCyan/40 via-transparent to-neonPink/40 blur-sm"></div>
+            <img
+              src="https://github.com/Yanxi456.png"
+              alt="GitHub Avatar"
+              class="relative h-12 w-12 rounded-full border border-neonCyan/60 shadow-neon-cyan"
+              loading="lazy"
+            />
+          </div>
+          <div class="space-y-0.5">
+            <div class="flex items-center gap-2">
+              <span class="text-sm uppercase tracking-[0.25em] text-neonCyan/80">SYSU · School of Cyberscience & Technology</span>
+              <span class="h-px w-12 bg-gradient-to-r from-neonCyan/70 via-neonPink/70 to-transparent"></span>
+            </div>
+            <div class="flex items-baseline gap-2">
+              <h1 class="text-lg font-semibold tracking-wide text-slate-50">
+                Yanxi456
+              </h1>
+              <span class="text-[11px] uppercase tracking-[0.18em] text-slate-400">
+                Cyberpunk Student Node
+              </span>
+            </div>
+          </div>
+        </div>
+        <div class="hidden items-center gap-4 text-xs text-slate-400 sm:flex">
+          <div class="flex flex-col items-end">
+            <span class="font-mono text-[11px] text-neonPurple/80">STATUS: ONLINE</span>
+            <span id="status-timestamp" class="font-mono text-[10px] text-slate-500"></span>
+          </div>
+          <a
+            href="https://github.com/Yanxi456"
+            target="_blank"
+            rel="noreferrer"
+            class="group inline-flex items-center gap-1 rounded-full border border-neonCyan/60 bg-slate-900/60 px-3 py-1 text-[11px] font-mono uppercase tracking-[0.14em] text-neonCyan/90 shadow-neon-cyan transition hover:border-neonPink/80 hover:text-neonPink hover:shadow-neon-pink"
+          >
+            <span class="h-1.5 w-1.5 rounded-full bg-neonCyan group-hover:bg-neonPink"></span>
+            <span>Enter GitHub Realm</span>
+          </a>
+        </div>
+      </div>
+    </header>
+
+    <!-- 主内容 -->
+    <main class="relative z-10">
+      <div class="mx-auto flex max-w-5xl flex-col gap-8 px-4 py-8 lg:flex-row lg:py-12">
+        <!-- 左侧 Hero -->
+        <section class="flex-1 space-y-6">
+          <div class="relative overflow-hidden rounded-2xl border border-slate-700/80 bg-slate-900/70 p-6 shadow-[0_0_40px_rgba(0,0,0,0.7)] backdrop-blur">
+            <div class="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-neonCyan/70 to-transparent"></div>
+            <div class="pointer-events-none absolute inset-y-6 left-0 w-px bg-gradient-to-b from-transparent via-neonPink/60 to-transparent"></div>
+
+            <p class="mb-2 text-xs font-mono uppercase tracking-[0.25em] text-neonCyan/70">
+              SYSU · School of Cyberscience & Technology · CYBERPUNK · STUDENT
+            </p>
+            <h2 class="mb-3 text-3xl font-semibold tracking-wide text-slate-50 md:text-4xl lg:text-5xl">
+              构建我的
+              <span class="animate-flicker bg-gradient-to-r from-neonCyan via-neonPurple to-neonPink bg-clip-text text-transparent">
+                赛博学术节点
+              </span>
+            </h2>
+            <p class="max-w-xl text-sm text-slate-300/90">
+              这里是
+              <span class="font-semibold text-neonCyan/90">Yanxi456</span>
+              ，一名中山大学网络科学与技术学院（School of Cyberscience and Technology）的在读学生。
+              我把 GitHub 当作自己的信息港与实验室，用代码和像素记录学习、项目与灵感。
+            </p>
+
+            <div class="mt-6 grid gap-4 text-xs text-slate-300 md:grid-cols-3">
+              <div class="rounded-xl border border-emerald-400/40 bg-emerald-900/20 p-3 shadow-neon-cyan">
+                <div class="mb-1 flex items-center gap-2">
+                  <span class="h-1.5 w-1.5 rounded-full bg-emerald-300"></span>
+                  <span class="font-mono uppercase tracking-[0.14em] text-emerald-200">
+                    Identity
+                  </span>
+                </div>
+                <p class="text-[11px] leading-relaxed text-emerald-100/90">
+                  SYSU · School of Cyberscience & Technology ·
+                  喜欢在深夜编译代码与未来感 UI。
+                </p>
+              </div>
+              <div class="rounded-xl border border-neonPink/40 bg-fuchsia-900/20 p-3 shadow-neon-pink">
+                <div class="mb-1 flex items-center gap-2">
+                  <span class="h-1.5 w-1.5 rounded-full bg-neonPink"></span>
+                  <span class="font-mono uppercase tracking-[0.14em] text-neonPink">
+                    Focus
+                  </span>
+                </div>
+                <p class="text-[11px] leading-relaxed text-pink-100/90">
+                  Web · 系统 · 工具链 —— 愿景是把抽象的想法，变成可交互的赛博空间。
+                </p>
+              </div>
+              <div class="rounded-xl border border-sky-400/40 bg-sky-900/20 p-3 shadow-[0_0_18px_rgba(56,189,248,0.55)]">
+                <div class="mb-1 flex items-center gap-2">
+                  <span class="h-1.5 w-1.5 rounded-full bg-sky-300"></span>
+                  <span class="font-mono uppercase tracking-[0.14em] text-sky-200">
+                    This Page
+                  </span>
+                </div>
+                <p class="text-[11px] leading-relaxed text-sky-100/90">
+                  自动统计 GitHub 代码行数，绘制时间维度曲线，并开放评论区，作为个人的公开开发 Log。
+                </p>
+              </div>
+            </div>
+
+            <div class="mt-6 flex flex-wrap gap-3 text-xs">
+              <a
+                href="https://github.com/Yanxi456"
+                target="_blank"
+                rel="noreferrer"
+                class="inline-flex items-center gap-2 rounded-full border border-neonCyan/70 bg-slate-900/70 px-4 py-2 font-mono uppercase tracking-[0.16em] text-neonCyan shadow-neon-cyan transition hover:border-neonPink hover:text-neonPink hover:shadow-neon-pink"
+              >
+                <span class="h-1.5 w-1.5 rounded-full bg-neonCyan"></span>
+                <span>Open GitHub</span>
+              </a>
+              <span class="inline-flex items-center gap-2 rounded-full border border-slate-600/80 bg-slate-900/80 px-4 py-2 font-mono uppercase tracking-[0.16em] text-slate-300/90">
+                <span class="h-1 w-6 bg-gradient-to-r from-neonCyan via-neonPurple to-neonPink"></span>
+                <span>SYSU · Cyberscience & Technology · Node</span>
+              </span>
+            </div>
+          </div>
+        </section>
+
+        <!-- 右侧：代码统计卡片与系统信息 -->
+        <section class="flex-1 space-y-6">
+          <!-- 代码统计卡片 -->
+          <div class="relative overflow-hidden rounded-2xl border border-slate-700/80 bg-slate-900/80 p-4 shadow-[0_0_40px_rgba(0,0,0,0.75)] backdrop-blur">
+            <div class="mb-3 flex items-center justify-between gap-2">
+              <div>
+                <h3 class="text-sm font-semibold tracking-wide text-slate-50">
+                  Code Lines Over Time
+                </h3>
+                <p class="mt-0.5 text-[11px] text-slate-400">
+                  从 GitHub 仓库自动聚合的总代码行数（非 fork 仓库）。
+                </p>
+              </div>
+              <span class="rounded-full border border-slate-600/80 bg-slate-800/80 px-2 py-1 text-[10px] font-mono uppercase tracking-[0.16em] text-slate-300">
+                stats.json feed
+              </span>
+            </div>
+
+            <div id="chart-container" class="relative">
+              <div id="code-chart" class="h-64 w-full rounded-xl border border-slate-700/80 bg-slate-950/80"></div>
+              <div id="chart-placeholder" class="pointer-events-none absolute inset-0 flex items-center justify-center rounded-xl border border-dashed border-slate-600/70 bg-slate-950/60 text-center text-[11px] text-slate-400">
+                <div>
+                  <p class="mb-1 font-mono uppercase tracking-[0.18em] text-slate-500">
+                    Awaiting Data Stream
+                  </p>
+                  <p class="text-xs text-slate-400">
+                    正在等待 GitHub Actions 同步 <span class="font-mono text-slate-200">stats.json</span>，
+                    首次运行后将自动显示代码量曲线。
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 系统小状态卡 -->
+          <div class="grid gap-4 text-xs text-slate-300 sm:grid-cols-2">
+            <div class="rounded-xl border border-slate-700/80 bg-slate-900/80 p-4 backdrop-blur">
+              <p class="mb-1 font-mono text-[11px] uppercase tracking-[0.2em] text-slate-400">
+                System Channel
+              </p>
+              <ul class="space-y-1.5 text-[11px]">
+                <li class="flex items-center justify-between gap-3">
+                  <span class="text-slate-400">Identity</span>
+                  <span class="font-mono text-slate-100/90">SYSU · School of Cyberscience & Technology</span>
+                </li>
+                <li class="flex items-center justify-between gap-3">
+                  <span class="text-slate-400">GitHub Node</span>
+                  <span class="font-mono text-slate-100/90">Yanxi456</span>
+                </li>
+                <li class="flex items-center justify-between gap-3">
+                  <span class="text-slate-400">Mode</span>
+                  <span class="font-mono text-neonCyan">CYBERPUNK</span>
+                </li>
+              </ul>
+            </div>
+            <div class="rounded-xl border border-slate-700/80 bg-slate-900/80 p-4 backdrop-blur">
+              <p class="mb-1 font-mono text-[11px] uppercase tracking-[0.2em] text-slate-400">
+                Data Pipeline
+              </p>
+              <ul class="space-y-1.5 text-[11px]">
+                <li class="flex items-center justify-between gap-3">
+                  <span class="text-slate-400">Source</span>
+                  <span class="font-mono text-slate-100/90">GitHub API</span>
+                </li>
+                <li class="flex items-center justify-between gap-3">
+                  <span class="text-slate-400">Aggregation</span>
+                  <span class="font-mono text-slate-100/90">update_stats.py</span>
+                </li>
+                <li class="flex items-center justify-between gap-3">
+                  <span class="text-slate-400">Schedule</span>
+                  <span class="font-mono text-slate-100/90">Daily via Actions</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- 评论区：Giscus -->
+      <section class="relative z-10 border-t border-slate-800/80 bg-slate-950/80">
+        <div class="mx-auto max-w-5xl px-4 py-8">
+          <div class="mb-4 flex items-center justify-between gap-2">
+            <div>
+              <h3 class="text-sm font-semibold tracking-wide text-slate-50">
+                Comments · Feedback
+              </h3>
+              <p class="mt-0.5 text-[11px] text-slate-400">
+                使用 GitHub 账户通过 Giscus 发表评论，和我一起在赛博空间对话。
+              </p>
+            </div>
+            <span class="rounded-full border border-slate-600/80 bg-slate-900/90 px-3 py-1 text-[10px] font-mono uppercase tracking-[0.16em] text-slate-300">
+              Giscus Embedded
+            </span>
+          </div>
+
+          <div class="overflow-hidden rounded-2xl border border-slate-700/80 bg-slate-950/90 p-3 backdrop-blur">
+            <div id="comments">
+              <script src="https://giscus.app/client.js"
+                      data-repo="Yanxi456/Yanxi456.github.io"
+                      data-repo-id="R_kgDOLarpRQ"
+                      data-category="General"
+                      data-category-id="DIC_kwDOLarpRc4C1JZc"
+                      data-mapping="pathname"
+                      data-strict="0"
+                      data-reactions-enabled="1"
+                      data-emit-metadata="0"
+                      data-input-position="bottom"
+                      data-theme="preferred_color_scheme"
+                      data-lang="zh-CN"
+                      crossorigin="anonymous"
+                      async>
+              </script>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    // 更新顶部时间戳
+    function updateStatusTimestamp() {
+      const el = document.getElementById('status-timestamp');
+      if (!el) return;
+      const now = new Date();
+      const pad = (n) => n.toString().padStart(2, '0');
+      const yyyy = now.getFullYear();
+      const mm = pad(now.getMonth() + 1);
+      const dd = pad(now.getDate());
+      const hh = pad(now.getHours());
+      const mi = pad(now.getMinutes());
+      const ss = pad(now.getSeconds());
+      el.textContent = `${yyyy}-${mm}-${dd} ${hh}:${mi}:${ss} (local)`;
+    }
+    updateStatusTimestamp();
+    setInterval(updateStatusTimestamp, 1000);
+
+    // 加载 stats.json 并渲染 ECharts
+    function initCodeChart(data) {
+      const chartDom = document.getElementById('code-chart');
+      const placeholder = document.getElementById('chart-placeholder');
+      if (!chartDom) return;
+
+      const chart = echarts.init(chartDom, null, { renderer: 'canvas' });
+      if (!Array.isArray(data) || data.length === 0) {
+        placeholder.classList.remove('hidden');
+        chart.clear();
+        return;
+      }
+
+      // 按日期排序
+      data.sort((a, b) => new Date(a.date) - new Date(b.date));
+      const dates = data.map(d => d.date);
+      const totals = data.map(d => d.total_lines);
+
+      placeholder.classList.add('hidden');
+
+      const maxVal = Math.max(...totals);
+      const option = {
+        backgroundColor: 'transparent',
+        tooltip: {
+          trigger: 'axis',
+          backgroundColor: '#020617',
+          borderColor: '#22d3ee',
+          borderWidth: 1,
+          textStyle: { color: '#e5e7eb', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace', fontSize: 11 },
+          formatter: (params) => {
+            if (!params || !params.length) return '';
+            const p = params[0];
+            return [
+              `<span style=\"color:#64748b;\">${p.axisValueLabel}</span>`,
+              `<span style=\"color:#22d3ee;\">${p.value.toLocaleString()} lines</span>`
+            ].join('<br/>');
+          }
+        },
+        grid: {
+          left: 40,
+          right: 20,
+          top: 24,
+          bottom: 30,
+        },
+        xAxis: {
+          type: 'category',
+          data: dates,
+          boundaryGap: false,
+          axisLine: {
+            lineStyle: { color: '#4b5563' },
+          },
+          axisLabel: {
+            color: '#9ca3af',
+            fontSize: 10,
+          },
+          axisTick: { show: false },
+        },
+        yAxis: {
+          type: 'value',
+          axisLine: { show: false },
+          axisLabel: {
+            color: '#9ca3af',
+            fontSize: 10,
+          },
+          splitLine: {
+            lineStyle: {
+              color: 'rgba(148, 163, 184, 0.18)',
+              type: 'dashed',
+            },
+          },
+          max: maxVal === 0 ? 1 : maxVal * 1.1,
+        },
+        series: [
+          {
+            name: 'Total Lines',
+            type: 'line',
+            smooth: true,
+            symbol: 'circle',
+            symbolSize: 5,
+            itemStyle: {
+              color: '#22d3ee',
+              shadowBlur: 12,
+              shadowColor: 'rgba(34, 211, 238, 0.9)',
+            },
+            lineStyle: {
+              color: '#22d3ee',
+              width: 2,
+            },
+            areaStyle: {
+              color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                { offset: 0, color: 'rgba(34, 211, 238, 0.35)' },
+                { offset: 1, color: 'rgba(15, 23, 42, 0.1)' },
+              ]),
+            },
+            data: totals,
+          },
+        ],
+      };
+
+      chart.setOption(option);
+      window.addEventListener('resize', () => chart.resize());
+    }
+
+    async function loadStats() {
+      const placeholder = document.getElementById('chart-placeholder');
+      try {
+        const res = await fetch('stats.json', { cache: 'no-cache' });
+        if (!res.ok) {
+          placeholder.classList.remove('hidden');
+          return;
+        }
+        const json = await res.json();
+        initCodeChart(json);
+      } catch (e) {
+        console.error('Failed to load stats.json', e);
+        const placeholder = document.getElementById('chart-placeholder');
+        if (placeholder) placeholder.classList.remove('hidden');
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', loadStats);
+  </script>
+</body>
+</html>
+
