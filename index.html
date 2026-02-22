@@ -175,10 +175,10 @@
       <main class="lg:col-span-6 space-y-16">
         <!-- 个人简介 -->
         <section class="space-y-4">
-          <h2 class="text-3xl font-semibold tracking-tight">你好</h2>
+          <h2 class="text-3xl font-semibold tracking-tight">你好，我是Yanxi</h2>
           <p class="text-lg text-appleSecondary leading-relaxed max-w-2xl">
             这是一个记录学习过程的个人站点，
-            包含算法与数据结构、数论与数学、工程实践、理论随笔等内容。
+            包含Sysu_scst中的计算机科学，数学等课程内容。
           </p>
         </section>
 
@@ -210,22 +210,18 @@
             </div>
 
             <!-- 笔记分类 -->
-            <div class="mt-8 grid grid-cols-2 md:grid-cols-4 gap-4">
-              <button data-category="算法与数据结构" class="note-category-btn p-4 bg-white rounded-xl hover:shadow-md transition-shadow text-left">
-                <p class="font-medium text-sm">算法与数据结构</p>
-                <p class="text-xs text-appleSecondary mt-1">Dijkstra, Tarjan, 树状数组...</p>
+            <div class="mt-8 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+              <button data-category="数学" class="note-category-btn p-4 bg-white rounded-xl hover:shadow-md transition-shadow text-left">
+                <p class="font-medium text-sm">数学</p>
+                <p class="text-xs text-appleSecondary mt-1">代数、数论、分析...</p>
               </button>
-              <button data-category="数论与数学" class="note-category-btn p-4 bg-white rounded-xl hover:shadow-md transition-shadow text-left">
-                <p class="font-medium text-sm">数论与数学</p>
-                <p class="text-xs text-appleSecondary mt-1">Miller-Rabin, Jacobi...</p>
+              <button data-category="计算机科学" class="note-category-btn p-4 bg-white rounded-xl hover:shadow-md transition-shadow text-left">
+                <p class="font-medium text-sm">计算机科学</p>
+                <p class="text-xs text-appleSecondary mt-1">算法、系统、安全...</p>
               </button>
-              <button data-category="工程实践" class="note-category-btn p-4 bg-white rounded-xl hover:shadow-md transition-shadow text-left">
-                <p class="font-medium text-sm">工程实践</p>
-                <p class="text-xs text-appleSecondary mt-1">项目记录</p>
-              </button>
-              <button data-category="理论随笔" class="note-category-btn p-4 bg-white rounded-xl hover:shadow-md transition-shadow text-left">
-                <p class="font-medium text-sm">理论随笔</p>
-                <p class="text-xs text-appleSecondary mt-1">学习笔记</p>
+              <button data-category="工程" class="note-category-btn p-4 bg-white rounded-xl hover:shadow-md transition-shadow text-left">
+                <p class="font-medium text-sm">工程</p>
+                <p class="text-xs text-appleSecondary mt-1">项目实践与工具链</p>
               </button>
             </div>
           </div>
@@ -443,30 +439,137 @@
     generateCalendar();
 
     // 笔记数据
-    const notesData = {
-      '算法与数据结构': [
-        { title: 'Dijkstra 最短路径算法', file: 'notes/算法与数据结构/dijkstra.md' },
-        { title: 'Tarjan 算法', file: 'notes/算法与数据结构/tarjan.md' },
-        { title: '树状数组', file: 'notes/算法与数据结构/fenwick.md' },
-      ],
-      '数论与数学': [
-        { title: 'Miller-Rabin 素性检测', file: 'notes/数论与数学/miller-rabin.md' },
-        { title: 'Jacobi 符号', file: 'notes/数论与数学/jacobi.md' },
-      ],
-      '工程实践': [
-        { title: '项目开发指南', file: 'notes/工程实践/project-guide.pdf', isPdf: true },
-      ],
-      '理论随笔': [
-        { title: '学习随笔：为什么学数学', file: 'notes/理论随笔/essay.md' },
-      ],
-    };
+    const repoOwner = 'Yanxi456';
+    const repoName = 'Yanxi456.github.io';
+    const noteCategories = ['数学', '计算机科学', '工程'];
+    const useGitHubApi = location.hostname.endsWith('github.io');
+    let notesData = {};
+
+    async function fetchRepoTree() {
+      const repoResponse = await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}`);
+      if (!repoResponse.ok) {
+        throw new Error('无法获取仓库信息');
+      }
+      const repoInfo = await repoResponse.json();
+      const branch = repoInfo.default_branch;
+      const treeResponse = await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/git/trees/${branch}?recursive=1`);
+      if (!treeResponse.ok) {
+        throw new Error('无法获取仓库目录');
+      }
+      const treeInfo = await treeResponse.json();
+      return treeInfo.tree || [];
+    }
+
+    function isNoteFile(path) {
+      return /\.(md|markdown|pdf)$/i.test(path);
+    }
+
+    function formatNoteTitle(relativePath) {
+      const parts = relativePath.split('/');
+      const fileName = parts.pop() || '';
+      const baseName = fileName.replace(/\.[^/.]+$/, '');
+      const titleParts = parts.concat(baseName).map(part => part.replace(/[_-]+/g, ' '));
+      return titleParts.join(' / ');
+    }
+
+    function buildNotesData(tree) {
+      const data = {};
+      noteCategories.forEach(category => {
+        data[category] = [];
+      });
+      tree.forEach(item => {
+        if (item.type !== 'blob') return;
+        const category = noteCategories.find(name => item.path.startsWith(`notes/${name}/`));
+        if (!category) return;
+        if (!isNoteFile(item.path)) return;
+        const relativePath = item.path.slice(`notes/${category}/`.length);
+        const title = formatNoteTitle(relativePath);
+        data[category].push({
+          title,
+          file: item.path,
+          isPdf: /\.pdf$/i.test(item.path),
+        });
+      });
+      noteCategories.forEach(category => {
+        data[category].sort((a, b) => a.title.localeCompare(b.title, 'zh-Hans-CN'));
+      });
+      return data;
+    }
+
+    async function loadNotesData() {
+      try {
+        const tree = await fetchRepoTree();
+        return buildNotesData(tree);
+      } catch (error) {
+        console.warn(error);
+        const fallback = {};
+        noteCategories.forEach(category => {
+          fallback[category] = [];
+        });
+        return fallback;
+      }
+    }
+
+    function getLocalFallbackNotesData() {
+      const data = {};
+      noteCategories.forEach(category => {
+        data[category] = [];
+      });
+
+      data['数学'].push(
+        {
+          title: formatNoteTitle('数论与数学/jacobi.md'),
+          file: 'notes/数学/数论与数学/jacobi.md',
+          isPdf: false,
+        },
+        {
+          title: formatNoteTitle('数论与数学/miller-rabin.md'),
+          file: 'notes/数学/数论与数学/miller-rabin.md',
+          isPdf: false,
+        },
+        {
+          title: formatNoteTitle('理论随笔/essay.md'),
+          file: 'notes/数学/理论随笔/essay.md',
+          isPdf: false,
+        },
+      );
+
+      data['计算机科学'].push(
+        {
+          title: formatNoteTitle('算法与数据结构/dijkstra.md'),
+          file: 'notes/计算机科学/算法与数据结构/dijkstra.md',
+          isPdf: false,
+        },
+        {
+          title: formatNoteTitle('算法与数据结构/fenwick.md'),
+          file: 'notes/计算机科学/算法与数据结构/fenwick.md',
+          isPdf: false,
+        },
+        {
+          title: formatNoteTitle('算法与数据结构/tarjan.md'),
+          file: 'notes/计算机科学/算法与数据结构/tarjan.md',
+          isPdf: false,
+        },
+      );
+
+      data['工程'].push(
+        {
+          title: formatNoteTitle('工程实践/README.md'),
+          file: 'notes/工程/工程实践/README.md',
+          isPdf: false,
+        },
+      );
+
+      return data;
+    }
 
     // 渲染笔记导航
     function renderNoteNav() {
       const nav = document.getElementById('note-nav');
       nav.innerHTML = '';
       
-      for (const [category, notes] of Object.entries(notesData)) {
+      for (const category of noteCategories) {
+        const notes = notesData[category] || [];
         const categoryDiv = document.createElement('div');
         categoryDiv.className = 'note-category';
         
@@ -480,6 +583,13 @@
         notesList.id = `notes-${category}`;
         notesList.className = 'note-list hidden';
         
+        if (notes.length === 0) {
+          const emptyItem = document.createElement('div');
+          emptyItem.className = 'note-item';
+          emptyItem.textContent = '暂无笔记';
+          notesList.appendChild(emptyItem);
+        }
+
         notes.forEach(note => {
           const noteLink = document.createElement('button');
           noteLink.className = 'note-item';
@@ -545,8 +655,17 @@
       };
     });
 
+    async function initNotes() {
+      if (useGitHubApi) {
+        notesData = await loadNotesData();
+      } else {
+        notesData = getLocalFallbackNotesData();
+      }
+      renderNoteNav();
+    }
+
     // 初始化笔记导航
-    renderNoteNav();
+    initNotes();
   </script>
 </body>
 </html>

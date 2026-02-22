@@ -1,28 +1,147 @@
 // 笔记数据 - 与 index.html 同步
-const notesData = {
-  '算法与数据结构': [
-    { title: 'Dijkstra 最短路径算法', file: 'notes/算法与数据结构/dijkstra.md', tags: ['图论', '最短路径', '优先队列'] },
-    { title: 'Tarjan 强连通分量算法', file: 'notes/算法与数据结构/tarjan.md', tags: ['图论', 'DFS', '强连通分量'] },
-    { title: '树状数组 (Fenwick Tree)', file: 'notes/算法与数据结构/fenwick.md', tags: ['数据结构', '前缀和', ' BIT'] },
-  ],
-  '数论与数学': [
-    { title: 'Miller-Rabin 素性检测', file: 'notes/数论与数学/miller-rabin.md', tags: ['数论', '素数', '概率算法'] },
-    { title: 'Jacobi 符号', file: 'notes/数论与数学/jacobi.md', tags: ['数论', '二次剩余', '密码学'] },
-  ],
-  '工程实践': [
-    { title: '项目开发指南', file: 'notes/工程实践/project-guide.pdf', isPdf: true, tags: ['工程', '项目管理'] },
-  ],
-  '理论随笔': [
-    { title: '学习随笔：为什么学数学', file: 'notes/理论随笔/essay.md', tags: ['学习', '数学', '思考'] },
-  ],
-};
+const repoOwner = 'Yanxi456';
+const repoName = 'Yanxi456.github.io';
+const noteCategories = ['数学', '计算机科学', '工程'];
+const useGitHubApi = location.hostname.endsWith('github.io');
+let notesData = {};
+
+async function fetchRepoTree() {
+  const repoResponse = await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}`);
+  if (!repoResponse.ok) {
+    throw new Error('无法获取仓库信息');
+  }
+  const repoInfo = await repoResponse.json();
+  const branch = repoInfo.default_branch;
+  const treeResponse = await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/git/trees/${branch}?recursive=1`);
+  if (!treeResponse.ok) {
+    throw new Error('无法获取仓库目录');
+  }
+  const treeInfo = await treeResponse.json();
+  return treeInfo.tree || [];
+}
+
+function isNoteFile(path) {
+  return /\.(md|markdown|pdf)$/i.test(path);
+}
+
+function formatNoteTitle(relativePath) {
+  const parts = relativePath.split('/');
+  const fileName = parts.pop() || '';
+  const baseName = fileName.replace(/\.[^/.]+$/, '');
+  const titleParts = parts.concat(baseName).map(part => part.replace(/[_-]+/g, ' '));
+  return titleParts.join(' / ');
+}
+
+function buildNotesData(tree) {
+  const data = {};
+  noteCategories.forEach(category => {
+    data[category] = [];
+  });
+  tree.forEach(item => {
+    if (item.type !== 'blob') return;
+    const category = noteCategories.find(name => item.path.startsWith(`notes/${name}/`));
+    if (!category) return;
+    if (!isNoteFile(item.path)) return;
+    const relativePath = item.path.slice(`notes/${category}/`.length);
+    const title = formatNoteTitle(relativePath);
+    data[category].push({
+      title,
+      file: item.path,
+      isPdf: /\.pdf$/i.test(item.path),
+      tags: [],
+    });
+  });
+  noteCategories.forEach(category => {
+    data[category].sort((a, b) => a.title.localeCompare(b.title, 'zh-Hans-CN'));
+  });
+  return data;
+}
+
+async function loadNotesData() {
+  try {
+    const tree = await fetchRepoTree();
+    return buildNotesData(tree);
+  } catch (error) {
+    console.warn(error);
+    const fallback = {};
+    noteCategories.forEach(category => {
+      fallback[category] = [];
+    });
+    return fallback;
+  }
+}
+
+function getLocalFallbackNotesData() {
+  const data = {};
+  noteCategories.forEach(category => {
+    data[category] = [];
+  });
+
+  data['数学'].push(
+    {
+      title: formatNoteTitle('数论与数学/jacobi.md'),
+      file: 'notes/数学/数论与数学/jacobi.md',
+      isPdf: false,
+      tags: ['数论', '二次剩余', '密码学'],
+    },
+    {
+      title: formatNoteTitle('数论与数学/miller-rabin.md'),
+      file: 'notes/数学/数论与数学/miller-rabin.md',
+      isPdf: false,
+      tags: ['数论', '素数', '概率算法'],
+    },
+    {
+      title: formatNoteTitle('理论随笔/essay.md'),
+      file: 'notes/数学/理论随笔/essay.md',
+      isPdf: false,
+      tags: ['学习', '数学', '思考'],
+    },
+  );
+
+  data['计算机科学'].push(
+    {
+      title: formatNoteTitle('算法与数据结构/dijkstra.md'),
+      file: 'notes/计算机科学/算法与数据结构/dijkstra.md',
+      isPdf: false,
+      tags: ['图论', '最短路径', '优先队列'],
+    },
+    {
+      title: formatNoteTitle('算法与数据结构/tarjan.md'),
+      file: 'notes/计算机科学/算法与数据结构/tarjan.md',
+      isPdf: false,
+      tags: ['图论', 'DFS', '强连通分量'],
+    },
+    {
+      title: formatNoteTitle('算法与数据结构/fenwick.md'),
+      file: 'notes/计算机科学/算法与数据结构/fenwick.md',
+      isPdf: false,
+      tags: ['数据结构', '前缀和', 'BIT'],
+    },
+  );
+
+  data['工程'].push(
+    {
+      title: formatNoteTitle('工程实践/README.md'),
+      file: 'notes/工程/工程实践/README.md',
+      isPdf: false,
+      tags: ['工程', '项目管理'],
+    },
+  );
+
+  return data;
+}
 
 // 当前搜索状态
 let currentMode = 'all';
 let currentResults = [];
 
 // 初始化
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+  if (useGitHubApi) {
+    notesData = await loadNotesData();
+  } else {
+    notesData = getLocalFallbackNotesData();
+  }
   initSearch();
   checkUrlParams();
 });
